@@ -1,0 +1,4 @@
+1. Env + env example files
+2. config class
+3. src + folder events + register events
+4. utils - add filter posts, change channel tag, target many channels
