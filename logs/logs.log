@@ -1,0 +1,28 @@
+2025-02-04T17:44:59.813751+0200 SUCCESS You successfully logged in account +380992647411.
+2025-02-04T17:45:11.829017+0200 INFO Received single message 378.
+2025-02-04T17:45:12.867120+0200 ERROR Error processing single message: [Errno 2] No such file or directory: 'temp_pics/pics_<built-in function id>.png'
+2025-02-04T17:45:28.316280+0200 INFO Received single message 379.
+2025-02-04T17:45:28.672245+0200 ERROR Error processing single message: [Errno 2] No such file or directory: 'temp_pics/pics_<built-in function id>.png'
+2025-02-04T17:45:42.644627+0200 INFO Group id is already in use
+2025-02-04T17:45:42.849351+0200 INFO Received album with 2 messages.
+2025-02-04T17:45:44.438218+0200 INFO Copied and forwarded album with 2 messages.
+2025-02-04T17:50:35.550989+0200 SUCCESS You successfully logged in account +380992647411.
+2025-02-04T17:50:43.200670+0200 INFO Received single message 382.
+2025-02-04T17:50:43.357370+0200 SUCCESS Copied and forwarded single message 382.
+2025-02-04T17:50:50.391159+0200 INFO Group id is already in use
+2025-02-04T17:50:50.537966+0200 INFO Received album with 2 messages.
+2025-02-04T17:50:51.847272+0200 INFO Copied and forwarded album with 2 messages.
+2025-02-04T17:51:09.346096+0200 INFO Received single message 385.
+2025-02-04T17:51:09.555909+0200 ERROR Error processing single message: [Errno 2] No such file or directory: 'temp_pics/pics_<built-in function id>.png'
+2025-02-04T17:51:53.448758+0200 INFO Session +380992647411 has ended.
+2025-02-04T17:51:54.510110+0200 SUCCESS You successfully logged in account +380992647411.
+2025-02-04T17:51:59.592202+0200 INFO Received single message 386.
+2025-02-04T17:51:59.827825+0200 ERROR Error processing single message: [Errno 2] No such file or directory: 'temp_pics/pics_<built-in function id>.png'
+2025-02-04T17:53:31.168629+0200 INFO Session +380992647411 has ended.
+2025-02-04T17:53:31.888786+0200 SUCCESS You successfully logged in account +380992647411.
+2025-02-04T17:53:39.356087+0200 INFO Received single message 387.
+2025-02-04T17:53:39.981196+0200 SUCCESS Copied and forwarded single message 387.
+2025-02-04T17:53:52.037802+0200 INFO Group id is already in use
+2025-02-04T17:53:52.247371+0200 INFO Received album with 2 messages.
+2025-02-04T17:53:53.693863+0200 INFO Copied and forwarded album with 2 messages.
+2025-02-04T17:55:48.269794+0200 INFO Session +380992647411 has ended.

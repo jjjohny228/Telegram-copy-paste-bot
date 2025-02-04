@@ -6,6 +6,6 @@ class Config:
                  'target_channel_signature': 'target_signature'},
                 ]
 
-    AUTO_DELETE_LINKS = False  # Удаление ссылок в описании (True - удалять ссылку вместе с её текстом, если таковая имеется, False - ничего не делать со ссылками, None - удалять только ссылку, оставляя её текст, str - заменить ссылку на указанную ссылку(например, "AUTO_DELETE_LINKS = "https://t.me/your_channel""))
-    FORWARDS = None  # True - обрабатывать только пересланные сообщения, False - не обрабатывать пересланные сообщения, None - обрабатывать все сообщения.
+    AUTO_DELETE_LINKS = False  # Deleting links in description (True - delete link with its text, if any exists, False - do nothing with links, None - delete only link, leaving its text, str - replace link with specified link (for example, “AUTO_DELETE_LINKS = ”https://t.me/your_channel“”)).
+    FORWARDS = None  # True - process only forwarded messages, False - do not process forwarded messages, None - process all messages.
     BAN_WARDS = ('реклама', 'розіграш',)
