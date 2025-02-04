@@ -18,8 +18,17 @@ async def change_channel_signature(text: str, source_channel_signature: str, tar
             new_text = text.replace(source_channel_signature, '')
     return new_text
 
-async def find_target_channel(event, all_channels: list) -> dict:
+async def find_target_channel_for_single_message(event, all_channels: list) -> dict:
     source_channel_id = await channel_id_from_event(event)
+    for channel in all_channels:
+        if source_channel_id == channel['source_channel_id']:
+            return channel
+
+    raise ValueError('Channel not found')
+
+
+async def find_target_channel_for_album(channel_id: int, all_channels: list) -> dict:
+    source_channel_id = -1000000000000 - channel_id
     for channel in all_channels:
         if source_channel_id == channel['source_channel_id']:
             return channel

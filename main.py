@@ -1,3 +1,5 @@
+from collections import defaultdict
+import asyncio
 import os
 import re
 from telethon.errors import PhoneNumberBannedError, PasswordHashInvalidError, UsernameInvalidError
@@ -6,7 +8,10 @@ from telethon.sync import TelegramClient, events
 from dotenv import load_dotenv
 
 from config import Config
-from src.utils import change_channel_signature, text_contain_banword, find_target_channel
+from src.utils import change_channel_signature, text_contain_banword, find_target_channel_for_single_message, find_target_channel_for_album
+
+# Dictionary to store grouped messages temporarily
+grouped_messages = defaultdict(list)
 
 load_dotenv()
 
@@ -51,133 +56,140 @@ source_channels = (channel['source_channel_id'] for channel in Config.CHANNELS)
 
 @client.on(events.NewMessage(chats=source_channels, forwards=Config.FORWARDS))
 async def message_handler(event):
-    """
-    Обработка сообщений
-    """
+    # try:
     print(event)
+        # Check if the message is part of an album
     if event.message.grouped_id is not None:
-        print('scip album')
-        return
+        grouped_id = event.message.grouped_id
+        print(grouped_id)
+        if grouped_id not in grouped_messages:
+            grouped_messages.clear()
+            grouped_messages[grouped_id] = []
+        else:
+            print("уже было такое")
+            return
 
-    id = event.message.id
-    caption = event.message.text
-    spoiler = False
-    web_preview = False
+        # Wait for a short delay to collect all messages in the group
+        messages = await client.get_messages(event.message.peer_id, min_id=event.message.id - 5,
+                                             max_id=event.message.id + 5)
+        album_messages = [message for message in messages if message.grouped_id == event.message.grouped_id]
+        album_messages.reverse()
+        if not album_messages:
+            return
 
-    try:
-        if event.message.media.__dict__['spoiler'] is True:
-            spoiler = True
-    except AttributeError:
-        pass
-    except KeyError:
-        pass
+        grouped_messages[grouped_id] = album_messages
 
-    try:
-        if event.message.media.webpage.__dict__['url'] is not None:
-            web_preview = True
-    except AttributeError:
-        pass
-    except KeyError:
-        pass
+        # If no new messages have been added to the group, process the album
+        if grouped_id in grouped_messages and len(grouped_messages.get(grouped_id)) > 1:
 
-    gd_print(f"Получили сообщение {id}.")
+            await process_album(grouped_messages[grouped_id])
+            # del grouped_messages[grouped_id]  # Clear the group after processing
+    else:
+        # Process single messages
+        await process_single_message(event)
+    # except Exception as e:
+    #     bd_print(f"Error in message handler: {e}")
 
-    target_channel = await find_target_channel(event, Config.CHANNELS)
-    caption = await change_channel_signature(event.message.text,
+async def process_album(messages):
+    """
+    Process a group of messages (album).
+    """
+    # try:
+    media = []
+    target_channel = await find_target_channel_for_album(messages[0].peer_id.channel_id, Config.CHANNELS)
+    caption = await change_channel_signature(messages[0].message,
                                              target_channel.get('source_channel_signature'),
                                              target_channel.get('target_channel_signature'))
     if caption and await text_contain_banword(caption, Config.BAN_WARDS):
         return
 
-    if event.message.photo and not web_preview:
-        await client.download_media(event.message, f"temp_pics/pics_{id}.png")
-        await client.send_file(target_channel.get('target_channel_id'),
-                               InputMediaUploadedPhoto(await client.upload_file(f"temp_pics/pics_{id}.png"),
-                                                       spoiler=spoiler), caption=caption)
+    force_document = False
+    caption = await check_caption(caption)
+
+    gd_print(f"Received album with {len(messages)} messages.")
+
+    for message in messages:
+        if message.photo:
+            media.append(await client.download_media(message, f"temp_pics/{message.id}.png"))
+        elif message.video:
+            media.append(await client.download_media(message, f"temp_pics/{message.id}.mp4"))
+        elif message.document:
+            file_name = next((x.file_name for x in message.document.attributes if isinstance(x, DocumentAttributeFilename)), None)
+            media.append(await client.download_media(message, f"temp_pics/{file_name}"))
+            force_document = True
+        else:
+            bd_print("Unknown message type in album")
+            return
+    await client.send_file(target_channel.get('target_channel_id'), media, caption=caption, force_document=force_document)
+    gd_print(f"Copied and forwarded album with {len(messages)} messages.")
+
+    # for file in media:
+    #     os.remove(file)  # Clean up temporary files
+    # except Exception as e:
+    #     bd_print(f"Error processing album: {e}")
+
+async def process_single_message(message):
+    """
+    Process a single message.
+    """
+    # try:
+    id = message.id
+    caption = message.text
+    spoiler = False
+    web_preview = False
+
+    try:
+        if message.media.__dict__['spoiler'] is True:
+            spoiler = True
+    except (AttributeError, KeyError):
+        pass
+
+    try:
+        if message.media.webpage.__dict__['url'] is not None:
+            web_preview = True
+    except (AttributeError, KeyError):
+        pass
+
+    gd_print(f"Received single message {id}.")
+
+    target_channel = await find_target_channel_for_single_message(message, Config.CHANNELS)
+    caption = await change_channel_signature(message.text,
+                                             target_channel.get('source_channel_signature'),
+                                             target_channel.get('target_channel_signature'))
+    if caption and await text_contain_banword(caption, Config.BAN_WARDS):
+        return
+
+    if message.photo and not web_preview:
+        await client.download_media(message.message, f"temp_pics/pics_{id}.png")
+        await client.send_file(target_channel.get('target_channel_id'), InputMediaUploadedPhoto(await client.upload_file(f"temp_pics/pics_{id}.png"), spoiler=spoiler), caption=caption)
         os.remove(f"temp_pics/pics_{id}.png")
 
-    elif event.message.video:
-        await client.download_media(event.message, f"temp_pics/pics_{id}.mp4")
-        await client.send_file(target_channel.get('target_channel_id'), f"temp_pics/pics_{id}.mp4", caption=caption,
-                               video_note=True)  # video_note позволяет отправлять кружки в виде кружков, однако из-за этого иногда GIF может ошибочно отправляться как кружок. Используйте video_note = False на своё усмотрение.
+    elif message.video:
+        await client.download_media(message.message, f"temp_pics/pics_{id}.mp4")
+        await client.send_file(target_channel.get('target_channel_id'), f"temp_pics/pics_{id}.mp4", caption=caption, video_note=True)
         os.remove(f"temp_pics/pics_{id}.mp4")
 
-    elif event.message.document:
-        file_name = next(
-            (x.file_name for x in event.message.document.attributes if isinstance(x, DocumentAttributeFilename)), None)
-        if event.message.document.mime_type == "audio/ogg":
-            path = await client.download_media(event.message, f"temp_pics/{id}")
+    elif message.document:
+        file_name = next((x.file_name for x in message.document.attributes if isinstance(x, DocumentAttributeFilename)), None)
+        if message.document.mime_type == "audio/ogg":
+            path = await client.download_media(message.message, f"temp_pics/{id}")
             await client.send_file(target_channel.get('target_channel_id'), path, voice_note=True)
             os.remove(path)
             return
-        await client.download_media(event.message, f"temp_pics/{file_name}")
-        await client.send_file(target_channel.get('target_channel_id'), f"temp_pics/{file_name}", caption=caption,
-                               force_document=True)
+        await client.download_media(message.message, f"temp_pics/{file_name}")
+        await client.send_file(target_channel.get('target_channel_id'), f"temp_pics/{file_name}", caption=caption, force_document=True)
         os.remove(f"temp_pics/{file_name}")
 
     else:
         try:
             await client.send_message(target_channel.get('target_channel_id'), caption)
         except Exception as e:
-            bd_print(f"Ошибка при отправке сообщения: {e}")
+            bd_print(f"Error sending message: {e}")
             return
 
-    gd_print(f"Скопировали и успешно отправили сообщение {id}.")
-
-
-@client.on(events.Album(source_channels))
-async def album_handler(event):
-    print('Album', event)
-    print(type(event))
-    """
-    Обработка альбомов
-    """
-    if Config.FORWARDS is True:
-        if event.messages[0].fwd_from:
-            pass
-        else:
-            return
-    elif Config.FORWARDS is False:
-        if event.messages[0].fwd_from:
-            return
-
-    media = []
-    target_channel = await find_target_channel(event, Config.CHANNELS)
-    caption = await change_channel_signature(event.messages[0].text,
-                                             target_channel.get('source_channel_signature'),
-                                             target_channel.get('target_channel_signature'))
-    if caption and await text_contain_banword(caption, Config.BAN_WARDS):
-        return
-    force_document = False
-    message_id = event.messages[0].id
-    if message_id in last_id_message:
-        last_id_message.clear()
-        return # Album почему-то иногда получает ивент дважды на одно сообщение.
-    last_id_message.append(id)
-
-    caption = await check_caption(caption)
-
-    gd_print(f"Получили альбом из {len(event)} сообщений.")
-
-    for group_message in event.messages: # Да, spoiler для альбомов в теории можно реализовать, однако сделать это не так просто, как кажется. Плюсом занимало бы много времени на обработку.
-        if group_message.photo:
-            media.append(await client.download_media(group_message, f"temp_pics/{group_message.id}.png"))
-        elif group_message.video:
-            media.append(await client.download_media(group_message, f"temp_pics/{group_message.id}.mp4"))
-        elif group_message.document:
-            file_name = next((x.file_name for x in group_message.document.attributes if isinstance(x, DocumentAttributeFilename)), None)
-            media.append(await client.download_media(group_message, f"temp_pics/{file_name}"))
-            force_document = True
-        else:
-            return bd_print("Неизвестный тип сообщения")
-
-    await client.send_file(target_channel.get('target_channel_id'), media, caption=caption, force_document=force_document)
-    gd_print(f"Скопировали и успешно отправили альбом из {len(event)} сообщений.")
-
-    for file in media:
-        os.remove(file) # использование временной папки оказалось самым удобным способом.
-
-
+    gd_print(f"Copied and forwarded single message {id}.")
+    # except Exception as e:
+    #     bd_print(f"Error processing single message: {e}")
 
 
 if __name__ == "__main__":

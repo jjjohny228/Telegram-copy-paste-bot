@@ -1,4 +1,5 @@
-1. Env + env example files
-2. config class
-3. src + folder events + register events
-4. utils - add filter posts, change channel tag, target many channels
+1. src + folder events + register events
+2. Почистить код
+3. Убрать ненужный визуал консольный
+4. Добавить докер файл
+5. Запустить на сервере для теста
